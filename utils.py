@@ -1,4 +1,6 @@
 from rdkit import Chem
+from preprocess import consistent_mapping
+
 
 def unmap_smiles(smiles: str) -> str:
     """
@@ -37,13 +39,28 @@ def unmap_reactants(reactants):
 
 def get_multi(file_path):
     reaction_groups = defaultdict(list)
+    rank_map = {}
     
     with open(file_path, "r") as file:
         for line in file:
             reaction, metadata = line.rsplit(" ", 1)
+            rank = float(metadata.split(" ")[-1])
             reactants, products = reaction.split(">>")
             unmarked_reactants = unmap_reactants(reactants)
             reaction_groups[unmarked_reactants].append(line.strip())
+            rank_map[unmarked_reactants] = rank
     
-    return list(reaction_groups.values())
+    sorted_groups = sorted(reaction_groups.items(), key=lambda x: rank_map[x[0]], reverse=True)
+    
+    return [group for _, group in sorted_groups]
+
+
+def group_reactions(input_file, output_file):
+    sets = get_multi(input_file)
+    print(sets)
+    print([len(set) for set in sets])
+    with open(output_file, 'w') as file1:
+        for set in sets:
+            amalgamated = consistent_mapping(set)[2]
+            file1.write(amalgamated+"\n")
     
